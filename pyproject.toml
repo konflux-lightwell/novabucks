@@ -10,6 +10,8 @@ requires-python = ">=3.11"
 license = "Apache-2.0"
 dependencies = [
     "click>=8.0",
+    "oras>=0.1.0",
+    "python-qpid-proton>=0.31.0",
 ]
 
 [project.optional-dependencies]

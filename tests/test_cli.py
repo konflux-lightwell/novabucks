@@ -16,8 +16,19 @@ def test_no_subcommand_exits_with_code_2():
     assert result.exit_code == 2
 
 
-def test_sign_not_implemented():
+def test_sign_missing_required_args():
     runner = CliRunner()
     result = runner.invoke(main, ["sign"])
-    assert result.exit_code == 1
-    assert "not yet implemented" in result.output
+    assert result.exit_code != 0
+    assert "Missing" in result.output or "Error" in result.output
+
+
+def test_sign_help():
+    runner = CliRunner()
+    result = runner.invoke(main, ["sign", "--help"])
+    assert result.exit_code == 0
+    assert "--requester" in result.output
+    assert "--result-path" in result.output
+    assert "--config" in result.output
+    assert "--sign-key" in result.output
+    assert "REPO_URL" in result.output
