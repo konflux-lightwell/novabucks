@@ -5,10 +5,23 @@
 # Container Scanning customization: https://docs.gitlab.com/user/application_security/container_scanning/#customizing-analyzer-behavior
 # Note that environment variables can be set in several places
 # See https://docs.gitlab.com/ci/variables/#cicd-variable-precedence
+.common:
+  image: quay.io/redhat-aqe/tox:latest
+  tags: [itup-alm-x86]
+  cache:
+    paths:
+      - .cache/pip
+  before_script:
+    # Trust the IT Root CA.
+    - curl https://certs.corp.redhat.com/certs/Current-IT-Root-CAs.pem > /etc/pki/ca-trust/source/anchors/Current-IT-Root-CAs.pem
+    - update-ca-trust
+
 stages:
 - test
 - secret-detection
+
 sast:
+  extends: .common
   stage: test
 include:
 - template: Security/SAST.gitlab-ci.yml
