@@ -1,33 +1,20 @@
-import argparse
-import sys
+import click
 
 from novabucks import __version__
 
 
-def _handle_sign(_args):
-    print("sign: not yet implemented", file=sys.stderr)
+@click.group(invoke_without_command=True)
+@click.version_option(__version__, prog_name="novabucks")
+@click.pass_context
+def main(ctx):
+    """CLI tool for signing Maven artifacts."""
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
+        ctx.exit(2)
+
+
+@main.command()
+def sign():
+    """Sign Maven artifacts."""
+    click.echo("sign: not yet implemented", err=True)
     raise SystemExit(1)
-
-
-def create_parser():
-    parser = argparse.ArgumentParser(prog="novabucks", description="CLI tool for signing Maven artifacts")
-    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
-
-    subparsers = parser.add_subparsers(dest="command")
-    subparsers.add_parser("sign", help="Sign Maven artifacts")
-
-    return parser
-
-
-def main(argv=None):
-    parser = create_parser()
-    args = parser.parse_args(argv)
-
-    if args.command is None:
-        parser.print_help()
-        raise SystemExit(2)
-
-    handlers = {
-        "sign": _handle_sign,
-    }
-    handlers[args.command](args)

@@ -8,6 +8,9 @@ version = "0.1.0"
 description = "CLI tool for signing Maven artifacts"
 requires-python = ">=3.11"
 license = "Apache-2.0"
+dependencies = [
+    "click>=8.0",
+]
 
 [project.optional-dependencies]
 dev = [
