@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import logging
 import os
 import sys
@@ -40,10 +41,7 @@ class EncodedStream(object):
             pass
 
 
-def set_logging(
-    product, version, name="novabucks",
-    level=logging.DEBUG, handler=None, use_log_file=True
-):
+def set_logging(product, version, name="novabucks", level=logging.DEBUG, handler=None, use_log_file=True):
     logger = logging.getLogger(name)
     for hdlr in list(logger.handlers):
         logger.removeHandler(hdlr)

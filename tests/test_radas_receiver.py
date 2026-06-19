@@ -30,11 +30,12 @@ class RadasSignReceiverTest(unittest.TestCase):
         mock_radas_config.receiver_timeout.return_value = 60
 
         # Mock Container run to avoid real AMQP connection
-        with mock.patch(
-                "novabucks.radas_sign.Container") as mock_container, \
-                mock.patch("novabucks.radas_sign.SSLDomain") as ssl_domain, \
-                mock.patch("novabucks.radas_sign.OrasClient") as oras_client, \
-                mock.patch("novabucks.radas_sign.Event") as event:
+        with (
+            mock.patch("novabucks.radas_sign.Container") as mock_container,
+            mock.patch("novabucks.radas_sign.SSLDomain") as ssl_domain,
+            mock.patch("novabucks.radas_sign.OrasClient") as oras_client,
+            mock.patch("novabucks.radas_sign.Event") as event,
+        ):
             test_result_path = tempfile.mkdtemp()
             test_request_id = "test-request-id"
             r_receiver = RadasReceiver(test_result_path, test_request_id, mock_radas_config)
@@ -72,8 +73,8 @@ class RadasSignReceiverTest(unittest.TestCase):
                     "result_reference": "quay.io/example-sign/sign-repo",
                     "sig_keyname": "testkey",
                     "signing_status": "success",
-                    "errors": []
-                }
+                    "errors": [],
+                },
             }
             event.message.body = json.dumps(test_ummatch_result)
             r_receiver.on_message(event)
@@ -98,8 +99,8 @@ class RadasSignReceiverTest(unittest.TestCase):
                     "result_reference": "quay.io/example-sign/sign-repo",
                     "sig_keyname": "testkey",
                     "signing_status": "failed",
-                    "errors": ["error1", "error2"]
-                }
+                    "errors": ["error1", "error2"],
+                },
             }
             event.message.body = json.dumps(test_failed_result)
             r_receiver.on_message(event)
@@ -124,8 +125,8 @@ class RadasSignReceiverTest(unittest.TestCase):
                     "result_reference": "quay.io/example-sign/sign-repo",
                     "sig_keyname": "testkey",
                     "signing_status": "success",
-                    "errors": []
-                }
+                    "errors": [],
+                },
             }
             event.message.body = json.dumps(test_success_result)
             r_receiver.on_message(event)

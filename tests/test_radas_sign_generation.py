@@ -39,9 +39,7 @@ class RadasSignHandlerTest(unittest.TestCase):
 
     def test_multi_sign_files_generation(self):
         self.__prepare_artifacts()
-        failed, generated = generate_radas_sign(
-            self.__repo_dir, self.__root, self.__sign_result_file
-        )
+        failed, generated = generate_radas_sign(self.__repo_dir, self.__root, self.__sign_result_file)
         self.assertEqual(failed, [])
         expected_asc1 = os.path.join(self.__repo_dir, "foo/bar/1.0/foo-bar-1.0.jar.asc")
         expected_asc2 = os.path.join(self.__repo_dir, "foo/bar/2.0/foo-bar-2.0.jar.asc")
@@ -61,9 +59,7 @@ class RadasSignHandlerTest(unittest.TestCase):
         self.assertIn("signature2@hash", content2)
 
     def test_sign_files_generation_with_missing_artifacts(self):
-        failed, generated = generate_radas_sign(
-            self.__repo_dir, self.__root, self.__sign_result_file
-        )
+        failed, generated = generate_radas_sign(self.__repo_dir, self.__root, self.__sign_result_file)
         self.assertEqual(failed, [])
         expected_asc1 = os.path.join(self.__repo_dir, "foo/bar/1.0/foo-bar-1.0.jar.asc")
         expected_asc2 = os.path.join(self.__repo_dir, "foo/bar/2.0/foo-bar-2.0.jar.asc")
@@ -86,9 +82,7 @@ class RadasSignHandlerTest(unittest.TestCase):
                 return real_overwrite(path, content)
 
             mock_overwrite.side_effect = side_effect
-            failed, generated = generate_radas_sign(
-                self.__repo_dir, self.__root, self.__sign_result_file
-            )
+            failed, generated = generate_radas_sign(self.__repo_dir, self.__root, self.__sign_result_file)
 
         self.assertEqual(len(failed), 1)
         self.assertNotIn(expected_asc1, generated)
@@ -99,9 +93,7 @@ class RadasSignHandlerTest(unittest.TestCase):
         # simulate missing pull result by removing the sign result file loc
         shutil.rmtree(self.__sign_result_loc)
 
-        failed, generated = generate_radas_sign(
-            self.__repo_dir, self.__root, self.__sign_result_file
-        )
+        failed, generated = generate_radas_sign(self.__repo_dir, self.__root, self.__sign_result_file)
         self.assertEqual(failed, [])
         expected_asc1 = os.path.join(self.__repo_dir, "foo/bar/1.0/foo-bar-1.0.jar.asc")
         expected_asc2 = os.path.join(self.__repo_dir, "foo/bar/2.0/foo-bar-2.0.jar.asc")
@@ -120,47 +112,27 @@ class RadasSignHandlerTest(unittest.TestCase):
             "results": [
                 {
                     "file": "maven-repository/foo/bar/1.0/foo-bar-1.0.jar",
-                    "signature": (
-                        "-----BEGIN PGP SIGNATURE-----"
-                        "signature1@hash"
-                        "-----END PGP SIGNATURE-----"
-                    ),
+                    "signature": ("-----BEGIN PGP SIGNATURE-----" "signature1@hash" "-----END PGP SIGNATURE-----"),
                     "checksum": "sha256:sha256-content",
                 },
                 {
                     "file": "maven-repository/foo/bar/2.0/foo-bar-2.0.jar",
-                    "signature": (
-                        "-----BEGIN PGP SIGNATURE-----"
-                        "signature2@hash"
-                        "-----END PGP SIGNATURE-----"
-                    ),
+                    "signature": ("-----BEGIN PGP SIGNATURE-----" "signature2@hash" "-----END PGP SIGNATURE-----"),
                     "checksum": "sha256:sha256-content",
                 },
                 {
                     "file": "README.md",
-                    "signature": (
-                        "-----BEGIN PGP SIGNATURE-----"
-                        "signature2@hash"
-                        "-----END PGP SIGNATURE-----"
-                    ),
+                    "signature": ("-----BEGIN PGP SIGNATURE-----" "signature2@hash" "-----END PGP SIGNATURE-----"),
                     "checksum": "sha256:sha256-content",
                 },
                 {
                     "file": "radas-tmp/maven-repository/foo/bar/3.0/foo-bar-3.0.jar",
-                    "signature": (
-                        "-----BEGIN PGP SIGNATURE-----"
-                        "signature2@hash"
-                        "-----END PGP SIGNATURE-----"
-                    ),
+                    "signature": ("-----BEGIN PGP SIGNATURE-----" "signature2@hash" "-----END PGP SIGNATURE-----"),
                     "checksum": "sha256:sha256-content",
                 },
                 {
                     "file": "foo/bar/4.0/foo-bar-4.0.jar",
-                    "signature": (
-                        "-----BEGIN PGP SIGNATURE-----"
-                        "signature2@hash"
-                        "-----END PGP SIGNATURE-----"
-                    ),
+                    "signature": ("-----BEGIN PGP SIGNATURE-----" "signature2@hash" "-----END PGP SIGNATURE-----"),
                     "checksum": "sha256:sha256-content",
                 },
             ],

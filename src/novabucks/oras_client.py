@@ -66,7 +66,5 @@ class OrasClient:
             files = self.client.pull(target=result_reference_url, outdir=sign_result_loc)
             logger.info("Pull file from %s to %s", result_reference_url, sign_result_loc)
         except Exception as e:
-            logger.error(
-                "Failed to pull file from %s to %s: %s", result_reference_url, sign_result_loc, e
-            )
+            logger.error("Failed to pull file from %s to %s: %s", result_reference_url, sign_result_loc, e)
         return files

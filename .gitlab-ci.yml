@@ -27,6 +27,12 @@ flake8:
   script:
     - tox -e flake8
 
+black:
+  extends: .common
+  stage: lint
+  script:
+    - tox -e black
+
 ruff:
   extends: .common
   stage: lint

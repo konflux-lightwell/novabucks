@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import errno
 import hashlib
 import os
@@ -105,7 +106,7 @@ def digest(file: str, hash_type=HashType.SHA1) -> str:
 
 def digest_content(content: str, hash_type=HashType.SHA1) -> str:
     """This function will caculate the hash value for the string content with the specified
-       hash type
+    hash type
     """
     hash_obj = _hash_object(hash_type)
     hash_obj.update(content.encode('utf-8'))

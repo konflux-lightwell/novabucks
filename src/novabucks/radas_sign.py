@@ -43,13 +43,9 @@ class RadasConfig(object):
         self.__client_key: str = data.get("client_key", None)
         self.__client_key_pass_file: str = data.get("client_key_pass_file", None)
         self.__root_ca: str = data.get("root_ca", "/etc/pki/tls/certs/ca-bundle.crt")
-        self.__quay_radas_registry_config: Optional[str] = data.get(
-            "quay_radas_registry_config", None
-        )
+        self.__quay_radas_registry_config: Optional[str] = data.get("quay_radas_registry_config", None)
         self.__radas_sign_timeout_retry_count: int = data.get("radas_sign_timeout_retry_count", 10)
-        self.__radas_sign_timeout_retry_interval: int = data.get(
-            "radas_sign_timeout_retry_interval", 60
-        )
+        self.__radas_sign_timeout_retry_interval: int = data.get("radas_sign_timeout_retry_interval", 60)
         self.__radas_receiver_timeout: int = int(data.get("radas_receiver_timeout", 1800))
 
     def validate(self) -> bool:
@@ -74,13 +70,9 @@ class RadasConfig(object):
         if self.__root_ca and not os.access(self.__root_ca, os.R_OK):
             logger.error("The root ca file is not valid!")
             return False
-        if self.__quay_radas_registry_config and not os.access(
-            self.__quay_radas_registry_config, os.R_OK
-        ):
+        if self.__quay_radas_registry_config and not os.access(self.__quay_radas_registry_config, os.R_OK):
             self.__quay_radas_registry_config = None
-            logger.warning(
-                "The quay registry config for oras is not valid, will ignore the registry config!"
-            )
+            logger.warning("The quay registry config for oras is not valid, will ignore the registry config!")
         return True
 
     def umb_target(self) -> str:
@@ -165,27 +157,18 @@ class RadasReceiver(MessagingHandler):
             self._ssl = SSLDomain(SSLDomain.MODE_CLIENT)
             self._ssl.set_trusted_ca_db(self.rconf.root_ca())
             self._ssl.set_peer_authentication(SSLDomain.VERIFY_PEER)
-            self._ssl.set_credentials(
-                self.rconf.client_ca(),
-                self.rconf.client_key(),
-                self.rconf.client_key_password()
-            )
+            self._ssl.set_credentials(self.rconf.client_ca(), self.rconf.client_key(), self.rconf.client_key_password())
         self.log = logging.getLogger("charon.pkgs.radas_sign.RadasReceiver")
 
     def on_start(self, event: Event) -> None:
         umb_target = self.rconf.umb_target()
         container = event.container
-        self._conn = container.connect(
-            url=umb_target,
-            ssl_domain=self._ssl,
-            heartbeat=500
-        )
+        self._conn = container.connect(url=umb_target, ssl_domain=self._ssl, heartbeat=500)
         receiver = container.create_receiver(
-            context=self._conn, source=self.rconf.result_queue(),
+            context=self._conn,
+            source=self.rconf.result_queue(),
         )
-        self.log.info("Listening on %s, queue: %s",
-                      umb_target,
-                      receiver.source.address)
+        self.log.info("Listening on %s, queue: %s", umb_target, receiver.source.address)
         self._start_time = time.time()
         container.schedule(self._timeout_check_delay, self)
 
@@ -193,11 +176,13 @@ class RadasReceiver(MessagingHandler):
         current = time.time()
         timeout = self.rconf.receiver_timeout()
         idle_time = current - self._start_time
-        self.log.debug("Checking timeout: passed %s seconds, timeout time %s seconds",
-                       idle_time, timeout)
+        self.log.debug("Checking timeout: passed %s seconds, timeout time %s seconds", idle_time, timeout)
         if idle_time > self.rconf.receiver_timeout():
-            self.log.error("The receiver did not receive messages for more than %s seconds,"
-                           " and needs to stop receiving and quit.", timeout)
+            self.log.error(
+                "The receiver did not receive messages for more than %s seconds,"
+                " and needs to stop receiving and quit.",
+                timeout,
+            )
             self._close(event)
         else:
             event.container.schedule(self._timeout_check_delay, self)
@@ -213,8 +198,7 @@ class RadasReceiver(MessagingHandler):
         self.log.error("Received an error event:\n%s", event.message.body)
 
     def on_disconnected(self, event: Event) -> None:
-        self.log.info("Disconnected from AMQP broker: %s",
-                      event.connection.connected_address)
+        self.log.info("Disconnected from AMQP broker: %s", event.connection.connected_address)
 
     def _close(self, event: Event) -> None:
         if event:
@@ -232,10 +216,7 @@ class RadasReceiver(MessagingHandler):
         msg_dict = json.loads(msg)
         radas_response = msg_dict.get("msg")
         if not radas_response:
-            self.log.info(
-                "Message %s is not valid, ignoring",
-                msg_dict
-            )
+            self.log.info("Message %s is not valid, ignoring", msg_dict)
             return
 
         msg_request_id = radas_response.get("request_id")
@@ -248,9 +229,7 @@ class RadasReceiver(MessagingHandler):
             return
 
         self._message_handled = True
-        self.log.info(
-            "Start to process the sign event message, request_id %s is matched", msg_request_id
-        )
+        self.log.info("Start to process the sign event message, request_id %s is matched", msg_request_id)
         self.sign_result_status = radas_response.get("signing_status")
         self.sign_result_errors = radas_response.get("errors", [])
         if self.sign_result_status == "success":
@@ -264,14 +243,11 @@ class RadasReceiver(MessagingHandler):
             os.makedirs(sign_result_parent_dir, exist_ok=True)
 
             oras_client = OrasClient()
-            files = oras_client.pull(
-                result_reference_url=result_reference_url, sign_result_loc=self.sign_result_loc
-            )
+            files = oras_client.pull(result_reference_url=result_reference_url, sign_result_loc=self.sign_result_loc)
             if files and len(files) > 0:
                 self.log.info("Number of files pulled: %d, path: %s", len(files), files[0])
         else:
-            self.log.error("The signing result received with failed status. Errors: %s",
-                           self.sign_result_errors)
+            self.log.error("The signing result received with failed status. Errors: %s", self.sign_result_errors)
 
 
 class RadasSender(MessagingHandler):
@@ -285,6 +261,7 @@ class RadasSender(MessagingHandler):
         status (str): tell if status for message sending, only "success"
         means the message is sent successfully.
     """
+
     def __init__(self, payload: Any, rconf: RadasConfig):
         super(RadasSender, self).__init__()
         self.payload = payload
@@ -301,21 +278,13 @@ class RadasSender(MessagingHandler):
             self._ssl = SSLDomain(SSLDomain.MODE_CLIENT)
             self._ssl.set_trusted_ca_db(self.rconf.root_ca())
             self._ssl.set_peer_authentication(SSLDomain.VERIFY_PEER)
-            self._ssl.set_credentials(
-                self.rconf.client_ca(),
-                self.rconf.client_key(),
-                self.rconf.client_key_password()
-            )
+            self._ssl.set_credentials(self.rconf.client_ca(), self.rconf.client_key(), self.rconf.client_key_password())
         self.log = logging.getLogger("charon.pkgs.radas_sign.RadasSender")
 
     def on_start(self, event):
         self._container = event.container
         self.log.debug("Start creating connection for sender to %s", self.rconf.umb_target())
-        conn = self._container.connect(
-            url=self.rconf.umb_target(),
-            ssl_domain=self._ssl,
-            heartbeat=500
-        )
+        conn = self._container.connect(url=self.rconf.umb_target(), ssl_domain=self._ssl, heartbeat=500)
         if conn:
             self.log.debug("Start creating sender")
             self._sender = self._container.create_sender(conn, self.rconf.request_channel())
@@ -334,8 +303,7 @@ class RadasSender(MessagingHandler):
             self._message_sent = True
 
     def on_error(self, event):
-        self.log.error("Error happened during message sending, reason %s",
-                       event.description)
+        self.log.error("Error happened during message sending, reason %s", event.description)
         self.status = "failed"
 
     def on_rejected(self, event):
@@ -378,8 +346,7 @@ class RadasSender(MessagingHandler):
             if self._retried < max_retries:
                 # Schedule retry
                 self._retried = self._retried + 1
-                self.log.info("Scheduling retry %s/%s for message %s",
-                              self._retried, max_retries, msg.body)
+                self.log.info("Scheduling retry %s/%s for message %s", self._retried, max_retries, msg.body)
                 # Schedule retry after delay
                 if self._container:
                     self._container.schedule(self.rconf.radas_sign_timeout_retry_interval(), self)
@@ -393,9 +360,7 @@ class RadasSender(MessagingHandler):
             self.close()
 
 
-def generate_radas_sign(
-        top_level: str, root: str, sign_result_file: str
-) -> Tuple[List[str], List[str]]:
+def generate_radas_sign(top_level: str, root: str, sign_result_file: str) -> Tuple[List[str], List[str]]:
     """
     Generate .asc files based on RADAS sign result json file
     """
@@ -428,15 +393,11 @@ def generate_radas_sign(
                 return
 
             if root not in file_path:
-                logger.debug(
-                    "Root '%s' not found in file_path '%s', handling directly.", root, file_path
-                )
+                logger.debug("Root '%s' not found in file_path '%s', handling directly.", root, file_path)
                 artifact_path = os.path.join(top_level, file_path)
                 asc_filename = f"{file_path}.asc"
             else:
-                logger.debug(
-                    "Root '%s' found in file_path '%s', removing it as prefix.", root, file_path
-                )
+                logger.debug("Root '%s' found in file_path '%s', removing it as prefix.", root, file_path)
                 stripped_file_path = file_path
                 parts = file_path.split(root, 1)
                 if len(parts) > 1:
@@ -447,9 +408,7 @@ def generate_radas_sign(
             signature_path = os.path.join(top_level, asc_filename)
 
             if not os.path.isfile(artifact_path):
-                logger.warning(
-                    "Artifact %s missing, skip signature file generation.",
-                    artifact_path)
+                logger.warning("Artifact %s missing, skip signature file generation.", artifact_path)
                 return
 
             try:
@@ -461,16 +420,12 @@ def generate_radas_sign(
                 logger.error("Failed to write .asc file for %s: %s", artifact_path, e)
 
     result = data.get("results", [])
-    (_failed_metas, _generated_signs) = __do_path_cut_and(generate_single_sign_file, result)
-    logger.info(
-        "Signature generation done. There are %s signature files generated.",
-        len(_generated_signs))
+    _failed_metas, _generated_signs = __do_path_cut_and(generate_single_sign_file, result)
+    logger.info("Signature generation done. There are %s signature files generated.", len(_generated_signs))
     return (_failed_metas, _generated_signs)
 
 
-def __do_path_cut_and(
-    path_handler: Callable, data: List[Dict[str, str]]
-) -> Tuple[List[str], List[str]]:
+def __do_path_cut_and(path_handler: Callable, data: List[Dict[str, str]]) -> Tuple[List[str], List[str]]:
 
     failed_paths: List[str] = []
     generated_signs: List[str] = []
@@ -478,8 +433,7 @@ def __do_path_cut_and(
     async def _run():
         sem = asyncio.BoundedSemaphore(10)
         tasks = [
-            path_handler(item.get("file"), item.get("signature"), failed_paths, generated_signs, sem)
-            for item in data
+            path_handler(item.get("file"), item.get("signature"), failed_paths, generated_signs, sem) for item in data
         ]
         await asyncio.gather(*tasks)
 
@@ -487,18 +441,21 @@ def __do_path_cut_and(
     return (failed_paths, generated_signs)
 
 
-def sign_in_radas(repo_url: str,
-                  requester: str,
-                  sign_key: str,
-                  result_path: str,
-                  ignore_patterns: List[str],
-                  radas_config: RadasConfig):
+def sign_in_radas(
+    repo_url: str,
+    requester: str,
+    sign_key: str,
+    result_path: str,
+    ignore_patterns: List[str],
+    radas_config: RadasConfig,
+):
     """
     This function will be responsible to do the overall controlling of the whole process,
     like trigger the send and register the receiver, and control the wait and timeout there.
     """
-    logger.debug("params. repo_url: %s, requester: %s, sign_key: %s, result_path: %s",
-                 repo_url, requester, sign_key, result_path)
+    logger.debug(
+        "params. repo_url: %s, requester: %s, sign_key: %s, result_path: %s", repo_url, requester, sign_key, result_path
+    )
     request_id = str(uuid.uuid4())
     exclude = ignore_patterns if ignore_patterns else []
     payload = {
@@ -507,7 +464,7 @@ def sign_in_radas(repo_url: str,
         "type": "mrrc",
         "file_reference": repo_url,
         "sig_keyname": sign_key,
-        "exclude": exclude
+        "exclude": exclude,
     }
 
     logger.info("Start sending signing message with id: %s", request_id)
@@ -525,6 +482,5 @@ def sign_in_radas(repo_url: str,
 
     status = receiver.sign_result_status
     if status != "success":
-        logger.error("The signing result is processed with errors: %s",
-                     receiver.sign_result_errors)
+        logger.error("The signing result is processed with errors: %s", receiver.sign_result_errors)
         sys.exit(1)

@@ -28,14 +28,15 @@ class RadasSignSenderTest(unittest.TestCase):
             "type": "mrrc",
             "file_reference": "quay.io/test/repo",
             "sig_keyname": "test-key",
-            "exclude": []
+            "exclude": [],
         }
 
         # Mock Container run to avoid real AMQP connection
-        with mock.patch(
-                "novabucks.radas_sign.Container") as mock_container, \
-                mock.patch("novabucks.radas_sign.SSLDomain") as ssl_domain, \
-                mock.patch("novabucks.radas_sign.Event") as event:
+        with (
+            mock.patch("novabucks.radas_sign.Container") as mock_container,
+            mock.patch("novabucks.radas_sign.SSLDomain") as ssl_domain,
+            mock.patch("novabucks.radas_sign.Event") as event,
+        ):
 
             json_payload = json.dumps(test_payload)
             r_sender = RadasSender(json_payload, mock_radas_config)
