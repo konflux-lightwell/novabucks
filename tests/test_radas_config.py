@@ -17,7 +17,6 @@ import unittest
 import os
 import shutil
 import tempfile
-import json
 from novabucks.utils.files import overwrite_file
 from novabucks.radas_sign import RadasConfig
 
@@ -70,7 +69,6 @@ class RadasConfigTest(unittest.TestCase):
         rconf = RadasConfig(radas_settings)
         self.assertIsNotNone(rconf)
         self.assertFalse(rconf.validate())
-
 
     def test_missing_result_queue(self):
         radas_settings = {

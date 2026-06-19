@@ -32,6 +32,7 @@ from novabucks.utils import files
 
 logger = logging.getLogger(__name__)
 
+
 class RadasConfig(object):
     def __init__(self, data: Dict):
         self.__umb_host: str = data.get("umb_host", None)

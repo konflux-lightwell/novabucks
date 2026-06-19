@@ -114,11 +114,11 @@ def digest_content(content: str, hash_type=HashType.SHA1) -> str:
 
 def _hash_object(hash_type: HashType):
     if hash_type == HashType.SHA1:
-        hash_obj = hashlib.sha1()
+        hash_obj = hashlib.sha1(usedforsecurity=False)
     elif hash_type == HashType.SHA256:
         hash_obj = hashlib.sha256()
     elif hash_type == HashType.MD5:
-        hash_obj = hashlib.md5()
+        hash_obj = hashlib.md5(usedforsecurity=False)
     elif hash_type == HashType.SHA512:
         hash_obj = hashlib.sha512()
     else:
