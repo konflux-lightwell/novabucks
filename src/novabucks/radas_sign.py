@@ -473,19 +473,16 @@ def __do_path_cut_and(
 
     failed_paths: List[str] = []
     generated_signs: List[str] = []
-    tasks = []
-    sem = asyncio.BoundedSemaphore(10)
-    for item in data:
-        file_path = item.get("file")
-        signature = item.get("signature")
-        tasks.append(
-            asyncio.ensure_future(
-                path_handler(file_path, signature, failed_paths, generated_signs, sem)
-            )
-        )
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(asyncio.gather(*tasks))
+    async def _run():
+        sem = asyncio.BoundedSemaphore(10)
+        tasks = [
+            path_handler(item.get("file"), item.get("signature"), failed_paths, generated_signs, sem)
+            for item in data
+        ]
+        await asyncio.gather(*tasks)
+
+    asyncio.run(_run())
     return (failed_paths, generated_signs)
 
 
