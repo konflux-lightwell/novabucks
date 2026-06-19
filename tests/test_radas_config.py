@@ -13,12 +13,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import unittest
 import os
 import shutil
 import tempfile
-from novabucks.utils.files import overwrite_file
+import unittest
+
 from novabucks.radas_sign import RadasConfig
+from novabucks.utils.files import overwrite_file
 
 
 class RadasConfigTest(unittest.TestCase):
