@@ -29,8 +29,8 @@ def sign_in_radas_workflow(
         logger.error("The novabucks configuration is not valid!")
         sys.exit(1)
 
-    # Create the RadasConfig object
-    radas_data = conf.get("radas", {})
+    # Create the RadasConfig object — support both nested {"radas": {...}} and flat layout
+    radas_data = conf.get("radas", conf)
     radas_conf = RadasConfig(radas_data)
     if not radas_conf.validate():
         logger.error("The configuration for radas is not valid!")
