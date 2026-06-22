@@ -20,7 +20,7 @@ import tempfile
 import unittest
 
 from novabucks.radas_sign import RadasConfig
-from novabucks.utils.files import overwrite_file
+from novabucks.utils.storage import overwrite_file
 
 
 class RadasConfigTest(unittest.TestCase):

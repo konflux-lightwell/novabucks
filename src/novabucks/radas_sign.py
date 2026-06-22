@@ -28,7 +28,7 @@ from proton.handlers import MessagingHandler
 from proton.reactor import Container
 
 from novabucks.oras_client import OrasClient
-from novabucks.utils import files
+from novabucks.utils import storage
 
 logger = logging.getLogger(__name__)
 
@@ -158,7 +158,7 @@ class RadasReceiver(MessagingHandler):
             self._ssl.set_trusted_ca_db(self.rconf.root_ca())
             self._ssl.set_peer_authentication(SSLDomain.VERIFY_PEER)
             self._ssl.set_credentials(self.rconf.client_ca(), self.rconf.client_key(), self.rconf.client_key_password())
-        self.log = logging.getLogger("charon.pkgs.radas_sign.RadasReceiver")
+        self.log = logging.getLogger("novabucks.radas_sign.RadasReceiver")
 
     def on_start(self, event: Event) -> None:
         umb_target = self.rconf.umb_target()
@@ -279,7 +279,7 @@ class RadasSender(MessagingHandler):
             self._ssl.set_trusted_ca_db(self.rconf.root_ca())
             self._ssl.set_peer_authentication(SSLDomain.VERIFY_PEER)
             self._ssl.set_credentials(self.rconf.client_ca(), self.rconf.client_key(), self.rconf.client_key_password())
-        self.log = logging.getLogger("charon.pkgs.radas_sign.RadasSender")
+        self.log = logging.getLogger("novabucks.radas_sign.RadasSender")
 
     def on_start(self, event):
         self._container = event.container
@@ -412,7 +412,7 @@ def generate_radas_sign(top_level: str, root: str, sign_result_file: str) -> Tup
                 return
 
             try:
-                files.overwrite_file(signature_path, signature)
+                storage.overwrite_file(signature_path, signature)
                 generated_signs.append(signature_path)
                 logger.debug("Generated .asc file: %s", signature_path)
             except Exception as e:

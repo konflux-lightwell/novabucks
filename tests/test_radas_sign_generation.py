@@ -23,7 +23,7 @@ import unittest
 from unittest import mock
 
 from novabucks.radas_sign import generate_radas_sign
-from novabucks.utils.files import overwrite_file
+from novabucks.utils.storage import overwrite_file
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,7 @@ class RadasSignHandlerTest(unittest.TestCase):
 
         # simulate expected_asc1 can not be written properly
         real_overwrite = overwrite_file
-        with mock.patch("novabucks.radas_sign.files.overwrite_file") as mock_overwrite:
+        with mock.patch("novabucks.radas_sign.storage.overwrite_file") as mock_overwrite:
 
             def side_effect(path, content):
                 if path == expected_asc1:

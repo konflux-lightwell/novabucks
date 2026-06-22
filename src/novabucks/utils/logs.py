@@ -41,7 +41,7 @@ class EncodedStream(object):
             pass
 
 
-def set_logging(product, version, name="novabucks", level=logging.DEBUG, handler=None, use_log_file=True):
+def set_logging(action_name, name="novabucks", level=logging.DEBUG, handler=None, use_log_file=True):
     logger = logging.getLogger(name)
     for hdlr in list(logger.handlers):
         logger.removeHandler(hdlr)
@@ -60,18 +60,16 @@ def set_logging(product, version, name="novabucks", level=logging.DEBUG, handler
     logger.addHandler(handler)
 
     if use_log_file:
-        set_log_file_handler(product, version, logger)
+        set_log_file_handler(action_name, logger)
 
     logger = logging.getLogger('novabucks')
     for hdlr in list(logger.handlers):
         hdlr.setFormatter(formatter)
 
 
-def set_log_file_handler(product, version, logger):
-    prd = product.replace(" ", "_")
-    ver = version.replace(" ", "_")
+def set_log_file_handler(action_name, logger):
     log_loc = os.getenv("ERROR_LOG_LOCATION")
-    error_log = "".join([prd, "-", ver, ".", DEFAULT_ERRORS_LOG])
+    error_log = "".join([action_name, ".", DEFAULT_ERRORS_LOG])
     if log_loc:
         os.makedirs(log_loc, exist_ok=True)
         error_log = os.path.join(log_loc, error_log)

@@ -13,9 +13,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-
 import errno
 import hashlib
+import logging
 import os
 import shutil
 import tempfile
@@ -23,6 +23,66 @@ from enum import Enum
 from typing import List, Optional, Tuple
 
 from novabucks.constants import MANIFEST_SUFFIX
+from novabucks.utils.archive import download_archive
+
+logger = logging.getLogger(__name__)
+
+
+def get_local_repo(url: str) -> str:
+    """Resolve a repository URL or local path into a local file path."""
+    archive_path = url
+    if url.startswith("http://") or url.startswith("https://"):
+        logger.info("Start downloading tarball %s", url)
+        archive_path = download_archive(url)
+        logger.info("Tarball downloaded at: %s", archive_path)
+    return archive_path
+
+
+def get_local_repos(urls: list) -> list:
+    """Resolve each repository URL or local path into a local file path."""
+    archive_paths = []
+    for url in urls:
+        archive_path = get_local_repo(url)
+        archive_paths.append(archive_path)
+    return archive_paths
+
+
+def safe_delete(target_dir: str):
+    """
+    Safely deletes the specified directory.
+
+    If the target directory exists, attempts to recursively delete it and all its contents.
+    Logs the action and any exception that occurs during the deletion.
+
+    Args:
+        target_dir: The path to the directory to be deleted.
+    """
+    if target_dir and os.path.exists(target_dir):
+        logger.info("Cleaning up work directory: %s", target_dir)
+        try:
+            shutil.rmtree(target_dir)
+        except Exception as e:
+            logger.error("Failed to delete directory. %s", e)
+
+
+def copy_files_to_destination(file_paths: list, root_path: str, destination_dir: str) -> None:
+    """
+    Copies files from file_paths to destination_dir, preserving relative paths with respect to root.
+    For example, if file_path is /tmp/maven-repo/org/apache/xyz.jar and root is /tmp/maven-repo,
+    the file is copied to destination_dir/org/apache/xyz.jar.
+
+    Args:
+        file_paths: List of source file paths to copy.
+        root_path: Root directory to determine relative path.
+        destination_dir: Target base directory for copying files.
+    """
+    for file_path in file_paths:
+        relative_path = os.path.relpath(file_path, root_path)
+        target_path = os.path.join(destination_dir, relative_path)
+        target_dir = os.path.dirname(target_path)
+        if not os.path.exists(target_dir):
+            os.makedirs(target_dir, exist_ok=True)
+        shutil.copy2(file_path, target_path)
 
 
 class HashType(Enum):
