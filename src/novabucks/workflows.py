@@ -1,3 +1,19 @@
+"""
+Copyright (C) 2022 Red Hat, Inc. (https://github.com/Commonjava/charon)
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+         http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
 import json
 import logging
 import os
@@ -27,6 +43,16 @@ def sign_in_radas_workflow(
     ignore_patterns: list[str],
     radas_config: RadasConfig,
 ):
+    """Load and validate a RADAS configuration, then sign all artifacts in the given repository.
+
+    Args:
+        repo_url: URL of the repository containing artifacts to sign.
+        requester: Identity of the user or service requesting the signing.
+        sign_key: Key identifier used for signing.
+        result_path: Filesystem path where signing results are written.
+        ignore_patterns: Glob patterns for artifacts that should be excluded from signing.
+        radas_config: File-like object containing the RADAS JSON configuration.
+    """
     # Load the radas configuration from the JSON file
     conf = json.load(radas_config)
     if not conf:
@@ -63,12 +89,31 @@ def sign_individual_artifacts_workflow(
     product_key: str,
     root_path: str,
     ignore_patterns: list[str],
-    work_dir: str,
+    temp_dir: str,
     destination_dir: str,
     sign_result_file: str,
 ):
+    """Extract, process, and sign individual Maven artifacts, then copy results to a destination.
+
+    Performs a multi-step pipeline: extracts zipped repositories, scans for valid Maven
+    paths, generates metadata and archetype catalogs, produces RADAS signature files,
+    and copies everything to the destination directory.
+
+    Args:
+        repos: List of repository ZIP file paths to process.
+        product_key: Product identifier used for grouping and manifest generation.
+        root_path: Root path prefix stripped when building relative artifact paths.
+        ignore_patterns: Glob patterns for artifacts that should be excluded.
+        temp_dir: Temporary directory used for extracting and processing artifacts.
+        destination_dir: Output directory where signed artifacts are copied.
+        sign_result_file: Path to the RADAS sign result file used to generate signatures.
+
+    Returns:
+        A tuple of (tmp_root, False) if no signature files were generated, indicating
+        failure. Returns None implicitly on success.
+    """
     # 1. extract the zip files
-    tmp_root = extract_zip_files(repos, root_path, product_key, work_dir)
+    tmp_root = extract_zip_files(repos, root_path, product_key, temp_dir)
 
     # 2. scan for paths and filter out the ignored paths,
     # and also collect poms for later metadata generation

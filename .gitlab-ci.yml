@@ -64,3 +64,5 @@ variables:
 
 secret_detection:
   stage: secret-detection
+  tags: [itup-alm-x86]
+
