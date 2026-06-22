@@ -20,8 +20,12 @@ logger = logging.getLogger(__name__)
 
 
 def sign_in_radas_workflow(
-    repo_url: str, requester: str, sign_key: str, result_path: str,
-    ignore_patterns: list[str], radas_config: RadasConfig,
+    repo_url: str,
+    requester: str,
+    sign_key: str,
+    result_path: str,
+    ignore_patterns: list[str],
+    radas_config: RadasConfig,
 ):
     # Load the radas configuration from the JSON file
     conf = json.load(radas_config)
@@ -55,8 +59,12 @@ def sign_in_radas_workflow(
 
 
 def sign_individual_artifacts_workflow(
-    repos: list[str], product_key: str, root_path: str,
-    ignore_patterns: list[str], work_dir: str, destination_dir: str,
+    repos: list[str],
+    product_key: str,
+    root_path: str,
+    ignore_patterns: list[str],
+    work_dir: str,
+    destination_dir: str,
     sign_result_file: str,
 ):
     # 1. extract the zip files
@@ -64,9 +72,7 @@ def sign_individual_artifacts_workflow(
 
     # 2. scan for paths and filter out the ignored paths,
     # and also collect poms for later metadata generation
-    (top_level,
-     valid_mvn_paths,
-     valid_poms, _) = scan_maven_paths(tmp_root, ignore_patterns, root_path)
+    top_level, valid_mvn_paths, valid_poms, _ = scan_maven_paths(tmp_root, ignore_patterns, root_path)
 
     # This prefix is a subdir under top-level directory in zip file
     # or root before real GAV dir structure
@@ -88,7 +94,8 @@ def sign_individual_artifacts_workflow(
     logger.info("Start generating maven-metadata.xml files for destination directory %s", destination_dir)
     meta_files = generate_metadatas(
         destination_dir=destination_dir,
-        poms=valid_poms, root=top_level,
+        poms=valid_poms,
+        root=top_level,
     )
     logger.info("maven-metadata.xml files generation done\n")
     failed_metas = meta_files.get(META_FILE_FAILED, [])
@@ -106,18 +113,13 @@ def sign_individual_artifacts_workflow(
     # 7. Determine refreshment of archetype-catalog.xml
     if os.path.exists(os.path.join(top_level, MAVEN_ARCH_FILE)):
         logger.info("Start generating archetype-catalog.xml for the destination directory %s", destination_dir)
-        archetype_file = generate_archetype_catalog(
-            root=top_level,
-            destination_dir=destination_dir
-        )
+        archetype_file = generate_archetype_catalog(root=top_level, destination_dir=destination_dir)
         logger.info("archetype-catalog.xml files generation done in destination directory %s\n", destination_dir)
 
         # 8. Copy archetype-catalog.xml if it has changed
         if archetype_file:
             archetype_files = [os.path.join(top_level, ARCHETYPE_CATALOG_FILENAME)]
-            archetype_files.extend(
-                hash_decorate_metadata(top_level, ARCHETYPE_CATALOG_FILENAME)
-            )
+            archetype_files.extend(hash_decorate_metadata(top_level, ARCHETYPE_CATALOG_FILENAME))
             logger.info("Start updating archetype-catalog.xml to the destination directory %s", destination_dir)
             copy_files_to_destination(
                 file_paths=archetype_files,
@@ -128,13 +130,14 @@ def sign_individual_artifacts_workflow(
 
     # 9. Generate signature files from radas sign result
     logger.info("Start generating radas signature files for the destination directory %s\n", destination_dir)
-    (_failed_metas, _generated_signs) = generate_radas_sign(
+    _failed_metas, _generated_signs = generate_radas_sign(
         top_level=top_level, root=root_path, sign_result_file=sign_result_file
     )
     if not _generated_signs:
         logger.error(
             "No sign result files were generated, "
-            "please make sure the sign process is already done and without timeout")
+            "please make sure the sign process is already done and without timeout"
+        )
         return (tmp_root, False)
 
     failed_metas.extend(_failed_metas)

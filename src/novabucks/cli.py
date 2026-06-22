@@ -62,11 +62,7 @@ def sign_repo_url(repo_url, requester, result_path, ignore_patterns, config, sig
 
 
 @main.command()
-@click.argument(
-    "repos",
-    type=str,
-    nargs=-1  # This allows multiple arguments for zip urls
-)
+@click.argument("repos", type=str, nargs=-1)  # This allows multiple arguments for zip urls
 @click.option(
     "--product",
     "-p",
@@ -123,18 +119,14 @@ def sign_repo_url(repo_url, requester, result_path, ignore_patterns, config, sig
     default="signed-artifacts",
 )
 @click.option(
-    "--debug",
-    "-D",
-    help="Debug mode, will print all debug logs for problem tracking.",
-    is_flag=True,
-    default=False
+    "--debug", "-D", help="Debug mode, will print all debug logs for problem tracking.", is_flag=True, default=False
 )
 @click.option(
     "--quiet",
     "-q",
     help="Quiet mode, will shrink most of the logs except warning and errors.",
     is_flag=True,
-    default=False
+    default=False,
 )
 @click.option(
     "--sign_result_file",
@@ -164,8 +156,13 @@ def generate_sign_files(
     try:
         product_key = f"{product}-{version}"
         sign_individual_artifacts_workflow(
-            repos, product_key, root_path, ignore_patterns,
-            work_dir, destination_dir, sign_result_file,
+            repos,
+            product_key,
+            root_path,
+            ignore_patterns,
+            work_dir,
+            destination_dir,
+            sign_result_file,
         )
     except Exception:
         print(traceback.format_exc())

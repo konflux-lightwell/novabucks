@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import logging
 import os
 import tempfile
@@ -28,9 +29,7 @@ def download_archive(url: str, base_dir=None) -> str:
     dir_ = base_dir
     if not dir_ or not os.path.isdir(dir_):
         dir_ = tempfile.mkdtemp()
-        logger.info("No base dir specified for holding archive."
-                    " Will use a temp dir %s to hold archive",
-                    dir_)
+        logger.info("No base dir specified for holding archive." " Will use a temp dir %s to hold archive", dir_)
     # Used solution here:
     # https://stackoverflow.com/questions/16694907/download-large-file-in-python-with-requests
     local_filename = os.path.join(dir_, url.split('/')[-1])
