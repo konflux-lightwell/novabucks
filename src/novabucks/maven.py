@@ -361,21 +361,6 @@ def _merge_directories_with_rename(src_dir: str, dest_dir: str, root: str):
     return copied_count, duplicated_count, merged_count, processed_count
 
 
-def extract_zip_file(repo: str, prefix="", dir__=None) -> str:
-    if os.path.exists(repo):
-        try:
-            logger.info("Extracting tarball %s", repo)
-            repo_zip = ZipFile(repo)
-            tmp_root = mkdtemp(prefix=f"novabucks-{prefix}-", dir=dir__)
-            extract_zip_all(repo_zip, tmp_root)
-            return tmp_root
-        except BadZipFile as e:
-            logger.error("Tarball extraction error: %s", e)
-            sys.exit(1)
-    logger.error("Error: archive %s does not exist", repo)
-    sys.exit(1)
-
-
 def extract_zip_files(repos: List[str], root: str, prefix="", dir__=None) -> str:
     """Extract multiple zip archives to a temporary directory.
     * repos are the list of repo paths to extract

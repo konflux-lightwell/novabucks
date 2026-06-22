@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import errno
 import hashlib
 import logging
 import os
@@ -24,28 +23,8 @@ from enum import Enum
 from typing import List, Optional, Tuple
 
 from novabucks.constants import MANIFEST_SUFFIX
-from novabucks.utils.archive import download_archive
 
 logger = logging.getLogger(__name__)
-
-
-def get_local_repo(url: str) -> str:
-    """Resolve a repository URL or local path into a local file path."""
-    archive_path = url
-    if url.startswith("http://") or url.startswith("https://"):
-        logger.info("Start downloading tarball %s", url)
-        archive_path = download_archive(url)
-        logger.info("Tarball downloaded at: %s", archive_path)
-    return archive_path
-
-
-def get_local_repos(urls: list) -> list:
-    """Resolve each repository URL or local path into a local file path."""
-    archive_paths = []
-    for url in urls:
-        archive_path = get_local_repo(url)
-        archive_paths.append(archive_path)
-    return archive_paths
 
 
 def safe_delete(target_dir: str):
@@ -95,21 +74,6 @@ class HashType(Enum):
     SHA512 = 3
 
 
-def get_hash_type(type_str: str) -> HashType:
-    """Get hash type from string"""
-    type_str_low = type_str.lower()
-    if type_str_low == "md5":
-        return HashType.MD5
-    elif type_str_low == "sha1":
-        return HashType.SHA1
-    elif type_str_low == "sha256":
-        return HashType.SHA256
-    elif type_str_low == "sha512":
-        return HashType.SHA512
-    else:
-        raise ValueError("Unsupported hash type: {}".format(type_str))
-
-
 def overwrite_file(file_path: str, content: str) -> None:
     parent_dir: Optional[str] = os.path.dirname(file_path)
     if parent_dir:
@@ -130,26 +94,6 @@ def overwrite_file(file_path: str, content: str) -> None:
         raise
 
 
-def read_sha1(file: str) -> str:
-    """This function will read sha1 hash of a file from a ${file}.sha1 file first, which should
-    contain the sha1 has of the file. This is a maven repository rule which contains .sha1 files
-    for artifact files. We can use this to avoid the digestion of big files which will improve
-    performance. BTW, for some files like .md5, .sha1 and .sha256, they don't have .sha1 files as
-    they are used for hashing, so we will directly calculate its sha1 hash through digesting.
-    """
-    if os.path.isfile(file):
-        non_search_suffix = [".md5", ".sha1", ".sha256", ".sha512"]
-        _, suffix = os.path.splitext(file)
-        if suffix not in non_search_suffix:
-            sha1_file = file + ".sha1"
-            if os.path.isfile(sha1_file):
-                with open(sha1_file, encoding="utf-8") as f:
-                    return f.read().strip()
-        return digest(file)
-    else:
-        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), file)
-
-
 def digest(file: str, hash_type=HashType.SHA1) -> str:
     hash_obj = _hash_object(hash_type)
 
@@ -162,15 +106,6 @@ def digest(file: str, hash_type=HashType.SHA1) -> str:
                 break
             hash_obj.update(data)
 
-    return hash_obj.hexdigest()
-
-
-def digest_content(content: str, hash_type=HashType.SHA1) -> str:
-    """This function will caculate the hash value for the string content with the specified
-    hash type
-    """
-    hash_obj = _hash_object(hash_type)
-    hash_obj.update(content.encode('utf-8'))
     return hash_obj.hexdigest()
 
 
