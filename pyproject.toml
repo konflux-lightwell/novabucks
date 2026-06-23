@@ -16,7 +16,7 @@ dependencies = [
     "python-qpid-proton>=0.31.0",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "pytest>=7.0",
     "ruff>=0.4",
@@ -24,6 +24,9 @@ dev = [
 
 [project.scripts]
 novabucks = "novabucks.cli:main"
+
+[tool.uv]
+default-groups = ["dev"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
