@@ -19,7 +19,7 @@ import os
 import re
 import sys
 from datetime import datetime
-from shutil import copy2, rmtree
+from shutil import copy2, copytree, rmtree
 from tempfile import mkdtemp
 from typing import Dict, List, Tuple, Union
 from zipfile import BadZipFile, ZipFile
@@ -376,6 +376,12 @@ def extract_zip_files(repos: List[str], root: str, prefix="", dir__=None) -> str
 
     if len(repos) == 1:
         if os.path.exists(repos[0]):
+            if os.path.isdir(repos[0]):
+                logger.info(
+                    "Not a ZIP file, copying the directory %s to the temporary directory %s", repos[0], final_tmp_root
+                )
+                copytree(repos[0], final_tmp_root, dirs_exist_ok=True)
+                return final_tmp_root
             try:
                 logger.info("Extracting the single ZIP file %s", repos[0])
                 repo_zip = ZipFile(repos[0])
@@ -399,13 +405,17 @@ def extract_zip_files(repos: List[str], root: str, prefix="", dir__=None) -> str
 
     for repo in repos:
         if os.path.exists(repo):
+            tmp_root = mkdtemp(prefix=f"novabucks-{prefix}-", dir=dir__)
+            if os.path.isdir(repo):
+                logger.info("Not a ZIP file, copying the directory %s to the temporary directory %s", repo, tmp_root)
+                copytree(repo, tmp_root, dirs_exist_ok=True)
+                extracted_dirs.append(tmp_root)
+                continue
             try:
                 logger.info("Extracting the ZIP file %s", repo)
                 repo_zip = ZipFile(repo)
-                tmp_root = mkdtemp(prefix=f"novabucks-{prefix}-", dir=dir__)
                 extract_zip_all(repo_zip, tmp_root)
                 extracted_dirs.append(tmp_root)
-
             except BadZipFile as e:
                 logger.error("ZIP file extraction error for repo %s: %s", repo, e)
                 sys.exit(1)
