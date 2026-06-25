@@ -41,6 +41,8 @@ novabucks --help
 
 Sign all Maven artifacts in a repository URL through the RADAS signing service. Produces a JSON file containing the signing results.
 
+**Using a config file:**
+
 ```bash
 novabucks sign-repo-url \
   https://example.com/maven/repo \
@@ -52,15 +54,36 @@ novabucks sign-repo-url \
   --ignore-patterns ".*\.sha1$"
 ```
 
+**Using environment variables:**
+
+```bash
+export RADAS_UMB_HOST="umb.stage.api.redhat.com"
+export RADAS_RESULT_QUEUE="Consumer.<name>.VirtualTopic.eng.robosignatory.mrrc.sign.>"
+export RADAS_REQUEST_CHANNEL="topic://VirtualTopic.eng.mrrc-signing-pipeline.mrrc.sign"
+export RADAS_CLIENT_CA="/path/to/client.crt"
+export RADAS_CLIENT_KEY="/path/to/client.pem"
+export RADAS_CLIENT_KEY_PASS_FILE="/path/to/client.pw"
+
+novabucks sign-repo-url \
+  https://example.com/maven/repo \
+  --requester "user@redhat.com" \
+  --result-path ./sign-result.json \
+  --config-from-env \
+  --sign-key "my-sign-key"
+```
+
 | Option | Short | Required | Description |
 |--------|-------|----------|-------------|
 | `--requester` | `-r` | Yes | The requester who sends the signing request |
 | `--result-path` | `-p` | Yes | Path to save the sign result JSON file |
-| `--config` | `-c` | Yes | RADAS configuration file path (JSON) |
+| `--config` | `-c` | No* | RADAS configuration file path (JSON) |
+| `--config-from-env` | `-e` | No* | Read RADAS configuration from `RADAS_*` environment variables |
 | `--sign-key` | `-k` | Yes | rpm-sign key to use |
 | `--ignore-patterns` | `-i` | No | Regex patterns to exclude files from signing (repeatable) |
 | `--debug` | `-D` | No | Enable debug logging |
 | `--quiet` | `-q` | No | Suppress all logs except warnings and errors |
+
+\* Exactly one of `--config` or `--config-from-env` must be provided. They are mutually exclusive.
 
 ### `generate_sign_files`
 
@@ -92,7 +115,11 @@ novabucks generate_sign_files \
 
 ### RADAS Configuration
 
-Both commands require a RADAS configuration file (`--config` / `--sign_result_file`) for communicating with the signing service over UMB (Unified Message Bus). Example `radas_cfg.json`:
+The `sign-repo-url` command requires RADAS configuration for communicating with the signing service over UMB (Unified Message Bus). Configuration can be provided via a JSON file (`--config`) or environment variables (`--config-from-env`).
+
+#### JSON file
+
+Example `radas_cfg.json`:
 
 ```json
 {
@@ -107,16 +134,26 @@ Both commands require a RADAS configuration file (`--config` / `--sign_result_fi
 }
 ```
 
-| Field | Description |
-|-------|-------------|
-| `umb_host` | UMB message broker hostname |
-| `result_queue` | AMQP queue for receiving signing results |
-| `request_channel` | AMQP topic for sending signing requests |
-| `client_ca` | Path to the client CA certificate |
-| `client_key` | Path to the client private key |
-| `client_key_pass_file` | Path to file containing the private key passphrase |
-| `root_ca` | Path to the root CA bundle |
-| `radas_receiver_timeout` | Timeout in seconds for waiting on signing results |
+The JSON file also supports a nested layout under a `"radas"` key, and may include an `"ignore_patterns"` list.
+
+#### Environment variables
+
+When using `--config-from-env`, each configuration field is read from a corresponding `RADAS_*` environment variable. Only set variables are included; unset variables fall back to their defaults.
+
+| Environment Variable | JSON Field | Default | Description |
+|---------------------|------------|---------|-------------|
+| `RADAS_UMB_HOST` | `umb_host` | *(required)* | UMB message broker hostname |
+| `RADAS_UMB_HOST_PORT` | `umb_host_port` | `5671` | UMB message broker port |
+| `RADAS_RESULT_QUEUE` | `result_queue` | *(required)* | AMQP queue for receiving signing results |
+| `RADAS_REQUEST_CHANNEL` | `request_channel` | *(required)* | AMQP topic for sending signing requests |
+| `RADAS_CLIENT_CA` | `client_ca` | - | Path to the client CA certificate |
+| `RADAS_CLIENT_KEY` | `client_key` | - | Path to the client private key |
+| `RADAS_CLIENT_KEY_PASS_FILE` | `client_key_pass_file` | - | Path to file containing the private key passphrase |
+| `RADAS_ROOT_CA` | `root_ca` | `/etc/pki/tls/certs/ca-bundle.crt` | Path to the root CA bundle |
+| `RADAS_QUAY_REGISTRY_CONFIG` | `quay_radas_registry_config` | - | Path to quay registry config for ORAS |
+| `RADAS_SIGN_TIMEOUT_RETRY_COUNT` | `radas_sign_timeout_retry_count` | `10` | Number of retry attempts on send failure |
+| `RADAS_SIGN_TIMEOUT_RETRY_INTERVAL` | `radas_sign_timeout_retry_interval` | `60` | Seconds between retries |
+| `RADAS_RECEIVER_TIMEOUT` | `radas_receiver_timeout` | `1800` | Timeout in seconds for waiting on signing results |
 
 ## Development
 

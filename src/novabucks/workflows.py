@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import json
 import logging
 import os
 import sys
@@ -41,7 +40,7 @@ def sign_in_radas_workflow(
     sign_key: str,
     result_path: str,
     ignore_patterns: list[str],
-    radas_config: RadasConfig,
+    radas_config: dict,
 ):
     """Load and validate a RADAS configuration, then sign all artifacts in the given repository.
 
@@ -51,10 +50,9 @@ def sign_in_radas_workflow(
         sign_key: Key identifier used for signing.
         result_path: Filesystem path where signing results are written.
         ignore_patterns: Glob patterns for artifacts that should be excluded from signing.
-        radas_config: File-like object containing the RADAS JSON configuration.
+        radas_config: Dictionary containing the RADAS configuration.
     """
-    # Load the radas configuration from the JSON file
-    conf = json.load(radas_config)
+    conf = radas_config
     if not conf:
         logger.error("The novabucks configuration is not valid!")
         sys.exit(1)

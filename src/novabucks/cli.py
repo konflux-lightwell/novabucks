@@ -14,7 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import json
 import logging
+import os
 import sys
 import traceback
 from typing import List
@@ -50,26 +52,69 @@ def main(ctx):
         ctx.exit(2)
 
 
+_RADAS_ENV_VARS = {
+    "RADAS_UMB_HOST": "umb_host",
+    "RADAS_UMB_HOST_PORT": "umb_host_port",
+    "RADAS_RESULT_QUEUE": "result_queue",
+    "RADAS_REQUEST_CHANNEL": "request_channel",
+    "RADAS_CLIENT_CA": "client_ca",
+    "RADAS_CLIENT_KEY": "client_key",
+    "RADAS_CLIENT_KEY_PASS_FILE": "client_key_pass_file",
+    "RADAS_ROOT_CA": "root_ca",
+    "RADAS_QUAY_REGISTRY_CONFIG": "quay_radas_registry_config",
+    "RADAS_SIGN_TIMEOUT_RETRY_COUNT": "radas_sign_timeout_retry_count",
+    "RADAS_SIGN_TIMEOUT_RETRY_INTERVAL": "radas_sign_timeout_retry_interval",
+    "RADAS_RECEIVER_TIMEOUT": "radas_receiver_timeout",
+}
+
+_RADAS_INT_FIELDS = {"radas_sign_timeout_retry_count", "radas_sign_timeout_retry_interval", "radas_receiver_timeout"}
+
+
+def _build_radas_config_from_env():
+    config = {}
+    for env_var, config_key in _RADAS_ENV_VARS.items():
+        value = os.environ.get(env_var)
+        if value is not None:
+            if config_key in _RADAS_INT_FIELDS:
+                value = int(value)
+            config[config_key] = value
+    return config
+
+
 @main.command()
 @click.argument("repo_url")
 @click.option("--requester", "-r", required=True, help="The requester who sends the signing request.")
 @click.option("--result-path", "-p", required=True, help="The path which will save the sign result file.")
 @click.option("--ignore-patterns", "-i", multiple=True, help="Regex patterns to filter out files from signing.")
+@click.option("--config", "-c", type=click.File("r"), help="The radas configuration file path in JSON format.")
 @click.option(
-    "--config", "-c", type=click.File("r"), required=True, help="The radas configuration file path in JSON format."
+    "--config-from-env",
+    "-e",
+    is_flag=True,
+    default=False,
+    help="Read radas configuration from RADAS_* environment variables instead of a config file.",
 )
 @click.option("--sign-key", "-k", required=True, help="rpm-sign key to be used.")
 @click.option("--debug", "-D", is_flag=True, default=False, help="Debug mode.")
 @click.option("--quiet", "-q", is_flag=True, default=False, help="Quiet mode.")
-def sign_repo_url(repo_url, requester, result_path, ignore_patterns, config, sign_key, debug, quiet):
+def sign_repo_url(repo_url, requester, result_path, ignore_patterns, config, config_from_env, sign_key, debug, quiet):
     """Sign Maven artifacts in the given repo URL through radas service.
 
     This command will generate a single sign result json file with all the signed artifacts.
     """
+    if config and config_from_env:
+        raise click.UsageError("--config and --config-from-env are mutually exclusive.")
+    if not config and not config_from_env:
+        raise click.UsageError("Either --config or --config-from-env must be provided.")
+
     _log_mode("repo_signing", is_quiet=quiet, is_debug=debug)
     logger.debug("%s", ignore_patterns)
     try:
-        sign_in_radas_workflow(repo_url, requester, sign_key, result_path, ignore_patterns, config)
+        if config_from_env:
+            radas_config = _build_radas_config_from_env()
+        else:
+            radas_config = json.load(config)
+        sign_in_radas_workflow(repo_url, requester, sign_key, result_path, ignore_patterns, radas_config)
     except SystemExit:
         raise
     except Exception:
