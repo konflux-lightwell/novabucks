@@ -139,9 +139,13 @@ class RadasReceiver(MessagingHandler):
             Result of the signing(success/failed)
         sign_result_errors (list):
             Any errors encountered if signing fails, this will be empty list if successful
+        registry_auth_config_path (str):
+            Registry auth for OrasClient, optional.
     """
 
-    def __init__(self, sign_result_loc: str, request_id: str, rconf: RadasConfig) -> None:
+    def __init__(
+        self, sign_result_loc: str, request_id: str, rconf: RadasConfig, registry_auth_config_path=None
+    ) -> None:
         super().__init__()
         self.sign_result_loc = sign_result_loc
         self.request_id = request_id
@@ -153,6 +157,7 @@ class RadasReceiver(MessagingHandler):
         self._start_time = 0.0
         self._timeout_check_delay = 30.0
         self._ssl: Optional[SSLDomain] = None
+        self.registry_cfg = registry_auth_config_path
         if rconf.ssl_enabled():
             self._ssl = SSLDomain(SSLDomain.MODE_CLIENT)
             self._ssl.set_trusted_ca_db(self.rconf.root_ca())
@@ -242,7 +247,7 @@ class RadasReceiver(MessagingHandler):
             sign_result_parent_dir = os.path.dirname(self.sign_result_loc)
             os.makedirs(sign_result_parent_dir, exist_ok=True)
 
-            oras_client = OrasClient()
+            oras_client = OrasClient(registry_auth_config_path=self.registry_cfg)
             files = oras_client.pull(result_reference_url=result_reference_url, sign_result_loc=self.sign_result_loc)
             if files and len(files) > 0:
                 self.log.info("Number of files pulled: %d, path: %s", len(files), files[0])
@@ -448,6 +453,7 @@ def sign_in_radas(
     result_path: str,
     ignore_patterns: List[str],
     radas_config: RadasConfig,
+    registry_auth_config_path=None,
 ):
     """
     This function will be responsible to do the overall controlling of the whole process,
@@ -477,7 +483,7 @@ def sign_in_radas(
         sys.exit(1)
 
     # request_id = "some-request-id-1" # for test purpose
-    receiver = RadasReceiver(result_path, request_id, radas_config)
+    receiver = RadasReceiver(result_path, request_id, radas_config, registry_auth_config_path=registry_auth_config_path)
     Container(receiver).run()
 
     status = receiver.sign_result_status

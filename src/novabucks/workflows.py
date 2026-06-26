@@ -42,6 +42,7 @@ def sign_in_radas_workflow(
     result_path: str,
     ignore_patterns: list[str],
     radas_config: RadasConfig,
+    registry_auth_config_path: str = None,
 ):
     """Load and validate a RADAS configuration, then sign all artifacts in the given repository.
 
@@ -81,6 +82,7 @@ def sign_in_radas_workflow(
         result_path=result_path,
         ignore_patterns=ig_patterns,
         radas_config=radas_conf,
+        registry_auth_config_path=registry_auth_config_path,
     )
 
 
