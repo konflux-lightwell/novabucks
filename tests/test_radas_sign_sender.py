@@ -15,6 +15,7 @@ limitations under the License.
 """
 
 import json
+import time
 import unittest
 from unittest import mock
 
@@ -53,7 +54,6 @@ class RadasSignSenderTest(unittest.TestCase):
             mock.patch("novabucks.radas_sign.SSLDomain") as ssl_domain,
             mock.patch("novabucks.radas_sign.Event") as event,
         ):
-
             json_payload = json.dumps(test_payload)
             r_sender = RadasSender(json_payload, mock_radas_config)
             self.assertEqual(ssl_domain.call_count, 1)
@@ -71,6 +71,9 @@ class RadasSignSenderTest(unittest.TestCase):
             r_sender.on_start(event)
             self.assertEqual(mock_container.connect.call_count, 1)
             self.assertEqual(mock_container.create_sender.call_count, 1)
+            # on_start now schedules a timeout check
+            self.assertEqual(mock_container.schedule.call_count, 1)
+            self.assertTrue(r_sender._start_time > 0.0)
 
             # test on_sendable
             mock_sender.credit = 1
@@ -89,16 +92,94 @@ class RadasSignSenderTest(unittest.TestCase):
             r_sender.on_rejected(event)
             self.assertIsNone(r_sender._pending)
             self.assertEqual(r_sender._retried, 1)
-            self.assertEqual(r_sender._container.schedule.call_count, 1)
+            self.assertEqual(r_sender._container.schedule.call_count, 2)
 
             # test on_released
             r_sender.on_released(event)
             self.assertIsNone(r_sender._pending)
             self.assertEqual(r_sender._retried, 2)
-            self.assertEqual(r_sender._container.schedule.call_count, 2)
+            self.assertEqual(r_sender._container.schedule.call_count, 3)
 
-            # test on_released
+            # test on_timer_task with _message_sent=True and _pending set
+            # (delivery retry path)
+            r_sender._pending = r_sender._message
             r_sender.on_timer_task(event)
             self.assertIsNone(r_sender._pending)
             self.assertEqual(r_sender._retried, 2)
             self.assertEqual(mock_sender.send.call_count, 2)
+
+    def test_sender_connection_timeout(self):
+        """Test that the sender times out if the connection is never established."""
+        mock_radas_config = mock.MagicMock()
+        mock_radas_config.validate.return_value = True
+        mock_radas_config.client_ca.return_value = "test-client-ca"
+        mock_radas_config.client_key.return_value = "test-client-key"
+        mock_radas_config.client_key_password.return_value = "test-client-key-pass"
+        mock_radas_config.root_ca.return_value = "test-root-ca"
+
+        with (
+            mock.patch("novabucks.radas_sign.Container"),
+            mock.patch("novabucks.radas_sign.SSLDomain"),
+            mock.patch("novabucks.radas_sign.Event") as event,
+        ):
+            r_sender = RadasSender("{}", mock_radas_config)
+
+            mock_container = mock.MagicMock()
+            event.container = mock_container
+            r_sender.on_start(event)
+
+            # Simulate time passing beyond the connection timeout
+            r_sender._start_time = time.time() - (r_sender._connection_timeout + 1)
+            r_sender.on_timer_task(event)
+
+            self.assertEqual(r_sender.status, "failed")
+            self.assertEqual(r_sender._container.stop.call_count, 1)
+
+    def test_sender_connection_not_timed_out(self):
+        """Test that the sender reschedules the timer if not yet timed out."""
+        mock_radas_config = mock.MagicMock()
+        mock_radas_config.validate.return_value = True
+        mock_radas_config.client_ca.return_value = "test-client-ca"
+        mock_radas_config.client_key.return_value = "test-client-key"
+        mock_radas_config.client_key_password.return_value = "test-client-key-pass"
+        mock_radas_config.root_ca.return_value = "test-root-ca"
+
+        with (
+            mock.patch("novabucks.radas_sign.Container"),
+            mock.patch("novabucks.radas_sign.SSLDomain"),
+            mock.patch("novabucks.radas_sign.Event") as event,
+        ):
+            r_sender = RadasSender("{}", mock_radas_config)
+
+            mock_container = mock.MagicMock()
+            event.container = mock_container
+            r_sender.on_start(event)
+
+            # Timer fires but we haven't timed out yet
+            schedule_count_before = mock_container.schedule.call_count
+            r_sender.on_timer_task(event)
+
+            # Should have rescheduled, not failed
+            self.assertIsNone(r_sender.status)
+            self.assertEqual(mock_container.schedule.call_count, schedule_count_before + 1)
+
+    def test_sender_transport_error(self):
+        """Test that transport errors are surfaced and cause failure."""
+        mock_radas_config = mock.MagicMock()
+        mock_radas_config.ssl_enabled.return_value = False
+
+        with mock.patch("novabucks.radas_sign.Event") as event:
+            r_sender = RadasSender("{}", mock_radas_config)
+            r_sender._container = mock.MagicMock()
+            r_sender._sender = mock.MagicMock()
+
+            cond = mock.MagicMock()
+            cond.name = "amqp:connection:forced"
+            cond.description = "broker forced disconnect"
+            event.transport = mock.MagicMock()
+            event.transport.condition = cond
+
+            r_sender.on_transport_error(event)
+
+            self.assertEqual(r_sender.status, "failed")
+            self.assertEqual(r_sender._container.stop.call_count, 1)
