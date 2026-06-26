@@ -25,45 +25,48 @@ logger = logging.getLogger(__name__)
 
 class OrasClient:
     """
-    Wrapper for oras‑py’s OrasClient, deciding whether to login based on config.
+    Wrapper for oras-py's OrasClient, deciding whether to login based on config.
     """
 
-    def __init__(self, config=None):
-        self.conf = config
+    def __init__(self, registry_auth_config_path=None):
+        self.registry_auth_config_path = registry_auth_config_path
         self.client = oras.client.OrasClient()
 
     def login_if_needed(self, registry: str) -> None:
         """
-        If quay_radas_registry_config is provided, call login to authenticate.
+        If registry_auth_config_path is provided, call login to authenticate.
         """
+        if not self.registry_auth_config_path:
+            logger.info("Registry auth config is not provided, skip login.")
+            return
+
         if not registry.startswith("http://") and not registry.startswith("https://"):
             registry = "https://" + registry
         registry = urlparse(registry).netloc
 
-        rconf = self.conf.get_radas_config() if self.conf else None
-        if rconf and rconf.quay_radas_registry_config():
-            logger.info("Logging in to registry: %s", registry)
-            res = self.client.login(
-                hostname=registry,
-                config_path=rconf.quay_radas_registry_config(),
-            )
-            logger.info(res)
-        else:
-            logger.info("Registry config is not provided, skip login.")
+        logger.info("Logging in to registry: %s", registry)
+        res = self.client.login(
+            hostname=registry,
+            config_path=self.registry_auth_config_path,
+        )
+        logger.info(res)
 
     def pull(self, result_reference_url: str, sign_result_loc: str) -> List[str]:
         """
-        Call oras‑py’s pull method to pull the remote file to local.
+        Call oras-py's pull method to pull the remote file to local.
         Args:
             result_reference_url (str):
-                Reference of the remote file (e.g. “quay.io/repository/signing/radas@hash”).
+                Reference of the remote file (e.g. "quay.io/repository/signing/radas@hash").
             sign_result_loc (str):
-                Local save path (e.g. “/tmp/sign”).
+                Local save path (e.g. "/tmp/sign").
         """
         files = []
         try:
             self.login_if_needed(registry=result_reference_url)
-            files = self.client.pull(target=result_reference_url, outdir=sign_result_loc)
+            pull_kwargs = {"target": result_reference_url, "outdir": sign_result_loc}
+            if self.registry_auth_config_path:
+                pull_kwargs["config_path"] = self.registry_auth_config_path
+            files = self.client.pull(**pull_kwargs)
             logger.info("Pull file from %s to %s", result_reference_url, sign_result_loc)
         except Exception as e:
             logger.error("Failed to pull file from %s to %s: %s", result_reference_url, sign_result_loc, e)
