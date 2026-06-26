@@ -138,9 +138,9 @@ def sign_individual_artifacts_workflow(
     logger.info("Manifest file written: %s", manifest_full_path)
 
     # 5. Generate maven-metadata.xml files
-    logger.info("Start generating maven-metadata.xml files for destination directory %s", destination_dir)
+    logger.info("Start generating maven-metadata.xml files for destination directory %s", top_level)
     meta_files = generate_metadatas(
-        destination_dir=destination_dir,
+        destination_dir=top_level,
         poms=valid_poms,
         root=top_level,
     )
