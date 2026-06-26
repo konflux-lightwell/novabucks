@@ -16,7 +16,6 @@ limitations under the License.
 
 import logging
 from typing import List
-from urllib.parse import urlparse
 
 import oras.client
 
@@ -32,25 +31,6 @@ class OrasClient:
         self.registry_auth_config_path = registry_auth_config_path
         self.client = oras.client.OrasClient()
 
-    def login_if_needed(self, registry: str) -> None:
-        """
-        If registry_auth_config_path is provided, call login to authenticate.
-        """
-        if not self.registry_auth_config_path:
-            logger.info("Registry auth config is not provided, skip login.")
-            return
-
-        if not registry.startswith("http://") and not registry.startswith("https://"):
-            registry = "https://" + registry
-        registry = urlparse(registry).netloc
-
-        logger.info("Logging in to registry: %s", registry)
-        res = self.client.login(
-            hostname=registry,
-            config_path=self.registry_auth_config_path,
-        )
-        logger.info(res)
-
     def pull(self, result_reference_url: str, sign_result_loc: str) -> List[str]:
         """
         Call oras-py's pull method to pull the remote file to local.
@@ -62,7 +42,6 @@ class OrasClient:
         """
         files = []
         try:
-            self.login_if_needed(registry=result_reference_url)
             pull_kwargs = {"target": result_reference_url, "outdir": sign_result_loc}
             if self.registry_auth_config_path:
                 pull_kwargs["config_path"] = self.registry_auth_config_path
