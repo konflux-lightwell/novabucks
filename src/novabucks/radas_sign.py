@@ -165,10 +165,9 @@ class RadasReceiver(MessagingHandler):
             self._ssl.set_peer_authentication(SSLDomain.VERIFY_PEER)
             self._ssl.set_credentials(self.rconf.client_ca(), self.rconf.client_key(), self.rconf.client_key_password())
             self.log.info(
-                "SSL enabled. root_ca=%s, client_ca=%s, client_key=%s",
+                "SSL enabled. root_ca=%s, client_cert=%s",
                 self.rconf.root_ca(),
                 self.rconf.client_ca(),
-                self.rconf.client_key(),
             )
         else:
             self.log.warning("SSL is NOT enabled — connecting without TLS")
@@ -315,10 +314,9 @@ class RadasSender(MessagingHandler):
             self._ssl.set_peer_authentication(SSLDomain.VERIFY_PEER)
             self._ssl.set_credentials(self.rconf.client_ca(), self.rconf.client_key(), self.rconf.client_key_password())
             self.log.info(
-                "SSL enabled. root_ca=%s, client_ca=%s, client_key=%s",
+                "SSL enabled. root_ca=%s, client_cert=%s",
                 self.rconf.root_ca(),
                 self.rconf.client_ca(),
-                self.rconf.client_key(),
             )
         else:
             self.log.warning("SSL is NOT enabled — connecting without TLS")
