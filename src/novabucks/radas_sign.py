@@ -129,7 +129,7 @@ class RadasReceiver(MessagingHandler):
     signing result.
     Attributes:
         sign_result_loc (str):
-            Local save path (e.g. “/tmp/sign”) for oras pull result, this value transfers
+            Local save path (e.g. "/tmp/sign") for oras pull result, this value transfers
             from the cmd flag,should register UmbListener when the client starts
         request_id (str):
             Identifier of the request for the signing result
@@ -158,16 +158,24 @@ class RadasReceiver(MessagingHandler):
         self._timeout_check_delay = 30.0
         self._ssl: Optional[SSLDomain] = None
         self.registry_cfg = registry_auth_config_path
+        self.log = logging.getLogger("novabucks.radas_sign.RadasReceiver")
         if rconf.ssl_enabled():
             self._ssl = SSLDomain(SSLDomain.MODE_CLIENT)
             self._ssl.set_trusted_ca_db(self.rconf.root_ca())
             self._ssl.set_peer_authentication(SSLDomain.VERIFY_PEER)
             self._ssl.set_credentials(self.rconf.client_ca(), self.rconf.client_key(), self.rconf.client_key_password())
-        self.log = logging.getLogger("novabucks.radas_sign.RadasReceiver")
+            self.log.info(
+                "SSL enabled. root_ca=%s, client_cert=%s",
+                self.rconf.root_ca(),
+                self.rconf.client_ca(),
+            )
+        else:
+            self.log.warning("SSL is NOT enabled — connecting without TLS")
 
     def on_start(self, event: Event) -> None:
         umb_target = self.rconf.umb_target()
         container = event.container
+        self.log.info("Connecting to %s", umb_target)
         self._conn = container.connect(url=umb_target, ssl_domain=self._ssl, heartbeat=500)
         receiver = container.create_receiver(
             context=self._conn,
@@ -177,6 +185,9 @@ class RadasReceiver(MessagingHandler):
         self._start_time = time.time()
         container.schedule(self._timeout_check_delay, self)
 
+    def on_connection_opened(self, event: Event) -> None:
+        self.log.info("Connection to %s established", event.connection.hostname)
+
     def on_timer_task(self, event: Event) -> None:
         current = time.time()
         timeout = self.rconf.receiver_timeout()
@@ -184,8 +195,7 @@ class RadasReceiver(MessagingHandler):
         self.log.debug("Checking timeout: passed %s seconds, timeout time %s seconds", idle_time, timeout)
         if idle_time > self.rconf.receiver_timeout():
             self.log.error(
-                "The receiver did not receive messages for more than %s seconds,"
-                " and needs to stop receiving and quit.",
+                "The receiver did not receive messages for more than %s seconds, and needs to stop receiving and quit.",
                 timeout,
             )
             self._close(event)
@@ -198,6 +208,21 @@ class RadasReceiver(MessagingHandler):
         if self._message_handled:
             self.log.debug("The signing result is handled.")
             self._close(event)
+
+    def on_transport_error(self, event: Event) -> None:
+        cond = event.transport.condition
+        self.log.error("Transport error: %s (description: %s)", cond.name, cond.description)
+        self._close(event)
+
+    def on_connection_error(self, event: Event) -> None:
+        cond = event.connection.remote_condition
+        self.log.error("Connection error: %s (description: %s)", cond.name, cond.description)
+        self._close(event)
+
+    def on_link_error(self, event: Event) -> None:
+        cond = event.link.remote_condition
+        self.log.error("Link error: %s (description: %s)", cond.name, cond.description)
+        self._close(event)
 
     def on_error(self, event: Event) -> None:
         self.log.error("Received an error event:\n%s", event.message.body)
@@ -279,33 +304,64 @@ class RadasSender(MessagingHandler):
         self._container: Optional[Container] = None
         self._sender: Optional[Sender] = None
         self._ssl: Optional[SSLDomain] = None
+        self._start_time = 0.0
+        self._timeout_check_delay = 30.0
+        self._connection_timeout = 120
+        self.log = logging.getLogger("novabucks.radas_sign.RadasSender")
         if self.rconf.ssl_enabled():
             self._ssl = SSLDomain(SSLDomain.MODE_CLIENT)
             self._ssl.set_trusted_ca_db(self.rconf.root_ca())
             self._ssl.set_peer_authentication(SSLDomain.VERIFY_PEER)
             self._ssl.set_credentials(self.rconf.client_ca(), self.rconf.client_key(), self.rconf.client_key_password())
-        self.log = logging.getLogger("novabucks.radas_sign.RadasSender")
+            self.log.info(
+                "SSL enabled. root_ca=%s, client_cert=%s",
+                self.rconf.root_ca(),
+                self.rconf.client_ca(),
+            )
+        else:
+            self.log.warning("SSL is NOT enabled — connecting without TLS")
 
     def on_start(self, event):
         self._container = event.container
-        self.log.debug("Start creating connection for sender to %s", self.rconf.umb_target())
+        self._start_time = time.time()
+        self._container.schedule(self._timeout_check_delay, self)
+        self.log.info("Connecting to %s", self.rconf.umb_target())
         conn = self._container.connect(url=self.rconf.umb_target(), ssl_domain=self._ssl, heartbeat=500)
         if conn:
-            self.log.debug("Start creating sender")
+            self.log.info("Creating sender on channel %s", self.rconf.request_channel())
             self._sender = self._container.create_sender(conn, self.rconf.request_channel())
-            self.log.debug("Sender created. Remote address: %s", self._sender.target.address)
+            self.log.info("Sender created. Remote address: %s", self._sender.target.address)
 
     def on_connection_opened(self, event):
         conn = event.connection
-        self.log.debug("Connection to %s is created.", conn.hostname)
+        self.log.info("Connection to %s established", conn.hostname)
 
     def on_sendable(self, event):
         if not self._message_sent:
             msg = Message(body=self.payload, durable=True)
-            self.log.debug("Sending message: %s to %s", msg.body, event.sender.target.address)
+            self.log.info("Sending message to %s", event.sender.target.address)
+            self.log.debug("Message body: %s", msg.body)
             self._send_msg(msg)
             self._message = msg
             self._message_sent = True
+
+    def on_transport_error(self, event):
+        cond = event.transport.condition
+        self.log.error("Transport error: %s (description: %s)", cond.name, cond.description)
+        self.status = "failed"
+        self.close()
+
+    def on_connection_error(self, event):
+        cond = event.connection.remote_condition
+        self.log.error("Connection error: %s (description: %s)", cond.name, cond.description)
+        self.status = "failed"
+        self.close()
+
+    def on_link_error(self, event):
+        cond = event.link.remote_condition
+        self.log.error("Link error: %s (description: %s)", cond.name, cond.description)
+        self.status = "failed"
+        self.close()
 
     def on_error(self, event):
         self.log.error("Error happened during message sending, reason %s", event.description)
@@ -325,12 +381,30 @@ class RadasSender(MessagingHandler):
         self.close()  # Close connection after confirmation
 
     def on_timer_task(self, event):
-        message_to_retry = self._message
-        self._send_msg(message_to_retry)
-        self._pending = None
+        # Connection timeout check — if we haven't sent a message yet, the
+        # connection/TLS handshake is still in progress.
+        if not self._message_sent:
+            elapsed = time.time() - self._start_time
+            self.log.info("Waiting for connection... %.0fs elapsed", elapsed)
+            if elapsed > self._connection_timeout:
+                self.log.error(
+                    "Sender connection timed out after %.0fs. "
+                    "Check network connectivity and TLS certificate configuration.",
+                    elapsed,
+                )
+                self.status = "failed"
+                self.close()
+                return
+            self._container.schedule(self._timeout_check_delay, self)
+            return
+        # Existing retry logic for failed deliveries
+        if self._pending:
+            message_to_retry = self._pending
+            self._send_msg(message_to_retry)
+            self._pending = None
 
     def close(self):
-        self.log.info("Message has been sent successfully, close connection")
+        self.log.info("Closing sender connection")
         if self._sender:
             self._sender.close()
         if self._container:
@@ -476,15 +550,21 @@ def sign_in_radas(
     logger.info("Start sending signing message with id: %s", request_id)
     sender = RadasSender(json.dumps(payload), radas_config)
     container = Container(sender)
+    logger.info("Starting sender event loop (blocking until message is sent or timeout)")
     container.run()
+    logger.info("Sender event loop exited with status: %s", sender.status)
 
     if not sender.status == "success":
         logger.error("Something wrong happened in message sending, see logs")
         sys.exit(1)
 
     # request_id = "some-request-id-1" # for test purpose
+    logger.info(
+        "Starting receiver event loop for request_id: %s (timeout: %ss)", request_id, radas_config.receiver_timeout()
+    )
     receiver = RadasReceiver(result_path, request_id, radas_config, registry_auth_config_path=registry_auth_config_path)
     Container(receiver).run()
+    logger.info("Receiver event loop exited with status: %s", receiver.sign_result_status)
 
     status = receiver.sign_result_status
     if status != "success":
