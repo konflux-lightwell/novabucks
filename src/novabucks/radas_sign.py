@@ -309,9 +309,15 @@ class RadasSender(MessagingHandler):
         self._connection_timeout = 120
         self.log = logging.getLogger("novabucks.radas_sign.RadasSender")
         if self.rconf.ssl_enabled():
+            self.log.debug("SSL enabled, using the %s", SSLDomain.MODE_CLIENT)
             self._ssl = SSLDomain(SSLDomain.MODE_CLIENT)
+            self.log.debug("Adding trusted CA DB: %a", self.rconf.root_ca())
             self._ssl.set_trusted_ca_db(self.rconf.root_ca())
+            self.log.debug("Setting peer authentication with %s", SSLDomain.VERIFY_PEER)
             self._ssl.set_peer_authentication(SSLDomain.VERIFY_PEER)
+            self.log.debug(
+                "Using the client cert as credentials %s, %s", self.rconf.client_ca(), self.rconf.client_key()
+            )
             self._ssl.set_credentials(self.rconf.client_ca(), self.rconf.client_key(), self.rconf.client_key_password())
             self.log.info(
                 "SSL enabled. root_ca=%s, client_cert=%s",
