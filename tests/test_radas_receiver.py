@@ -60,7 +60,7 @@ class RadasSignReceiverTest(unittest.TestCase):
             _, kwargs = mock_container.create_receiver.call_args
             self.assertEqual(
                 kwargs["source"],
-                "Consumer.svc.my-request-id.VirtualTopic.eng.robosignatory.sign.>",
+                "Consumer.svc-my-request-id.VirtualTopic.eng.robosignatory.sign.>",
             )
 
     def test_on_start_empty_request_id_leaves_queue_unchanged(self):

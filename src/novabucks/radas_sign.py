@@ -178,8 +178,8 @@ class RadasReceiver(MessagingHandler):
         self.log.info("Connecting to %s", umb_target)
         self._conn = container.connect(url=umb_target, ssl_domain=self._ssl, heartbeat=500)
         queue = self.rconf.result_queue()
-        if self.request_id and "VirtualTopic" in queue:
-            queue = queue.replace("VirtualTopic", f"{self.request_id}.VirtualTopic", 1)
+        if self.request_id and ".VirtualTopic" in queue:
+            queue = queue.replace(".VirtualTopic", f"-{self.request_id}.VirtualTopic", 1)
         receiver = container.create_receiver(
             context=self._conn,
             source=queue,
