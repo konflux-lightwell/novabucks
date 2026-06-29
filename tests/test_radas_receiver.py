@@ -35,8 +35,7 @@ class RadasSignReceiverTest(unittest.TestCase):
         r_receiver.sign_result_errors = []
         r_receiver.sign_result_status = None
 
-    def test_radas_receiver(self):
-        # Mock configuration
+    def _make_mock_config(self, result_queue="Consumer.svc.VirtualTopic.eng.robosignatory.sign.>"):
         mock_radas_config = mock.MagicMock()
         mock_radas_config.validate.return_value = True
         mock_radas_config.client_ca.return_value = "test-client-ca"
@@ -44,6 +43,58 @@ class RadasSignReceiverTest(unittest.TestCase):
         mock_radas_config.client_key_password.return_value = "test-client-key-pass"
         mock_radas_config.root_ca.return_value = "test-root-ca"
         mock_radas_config.receiver_timeout.return_value = 60
+        mock_radas_config.result_queue.return_value = result_queue
+        return mock_radas_config
+
+    def test_on_start_inserts_request_id_before_virtual_topic(self):
+        mock_radas_config = self._make_mock_config()
+        with (
+            mock.patch("novabucks.radas_sign.Container"),
+            mock.patch("novabucks.radas_sign.SSLDomain"),
+            mock.patch("novabucks.radas_sign.Event") as event,
+        ):
+            mock_container = mock.MagicMock()
+            event.container = mock_container
+            r_receiver = RadasReceiver("/tmp", "my-request-id", mock_radas_config)
+            r_receiver.on_start(event)
+            _, kwargs = mock_container.create_receiver.call_args
+            self.assertEqual(
+                kwargs["source"],
+                "Consumer.svc.my-request-id.VirtualTopic.eng.robosignatory.sign.>",
+            )
+
+    def test_on_start_empty_request_id_leaves_queue_unchanged(self):
+        configured = "Consumer.svc.VirtualTopic.eng.robosignatory.sign.>"
+        mock_radas_config = self._make_mock_config(result_queue=configured)
+        with (
+            mock.patch("novabucks.radas_sign.Container"),
+            mock.patch("novabucks.radas_sign.SSLDomain"),
+            mock.patch("novabucks.radas_sign.Event") as event,
+        ):
+            mock_container = mock.MagicMock()
+            event.container = mock_container
+            r_receiver = RadasReceiver("/tmp", "", mock_radas_config)
+            r_receiver.on_start(event)
+            _, kwargs = mock_container.create_receiver.call_args
+            self.assertEqual(kwargs["source"], configured)
+
+    def test_on_start_no_virtual_topic_leaves_queue_unchanged(self):
+        configured = "queue://some.static.queue"
+        mock_radas_config = self._make_mock_config(result_queue=configured)
+        with (
+            mock.patch("novabucks.radas_sign.Container"),
+            mock.patch("novabucks.radas_sign.SSLDomain"),
+            mock.patch("novabucks.radas_sign.Event") as event,
+        ):
+            mock_container = mock.MagicMock()
+            event.container = mock_container
+            r_receiver = RadasReceiver("/tmp", "my-request-id", mock_radas_config)
+            r_receiver.on_start(event)
+            _, kwargs = mock_container.create_receiver.call_args
+            self.assertEqual(kwargs["source"], configured)
+
+    def test_radas_receiver(self):
+        mock_radas_config = self._make_mock_config()
 
         # Mock Container run to avoid real AMQP connection
         with (
