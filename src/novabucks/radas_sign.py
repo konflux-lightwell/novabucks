@@ -206,6 +206,7 @@ class RadasReceiver(MessagingHandler):
             event.container.schedule(self._timeout_check_delay, self)
 
     def on_message(self, event: Event) -> None:
+        self.log.debug("Got message properties: %s", event.message.properties)
         self.log.debug("Got message: %s", event.message.body)
         self._process_message(event.message.body)
         if self._message_handled:
